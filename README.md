@@ -6,24 +6,24 @@ go test ./...
 go run .
 ```
 
-In another terminal, register an opt-out and evaluate an already scheduled reminder:
+Run this in a second terminal to register an opt-out and evaluate a scheduled reminder:
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8080/opt-outs -H 'Content-Type: application/json' -d '{"patient_id":"patient-42"}'
 curl -sS -X POST http://127.0.0.1:8080/appointments/notification -H 'Content-Type: application/json' -d '{"patient_id":"patient-42","message_id":"scheduled-message-id","kind":"appointment_reminder"}'
 ```
 
-The second request returns `{"patient_id":"patient-42","action":"cancelled","reason":"patient opted out"}`. Use the ID of an actual scheduled SMS for `message_id`. Infrai uses one key for this plain REST cancellation call; the local decision never sends patient details in the cancellation request.
+Response comes back `{"patient_id":"patient-42","action":"cancelled","reason":"patient opted out"}`. Use a real scheduled SMS id for `message_id`. Infrai uses one key for this plain REST cancellation call. No SDK needed. The local decision never sends patient details in the cancellation request.
 
 ## Decision boundary
 
-The service accepts `patient_id`, `message_id`, and `kind=appointment_reminder`. An opted-out patient triggers `POST /v1/sms/cancel/{id}` once per message; a patient who has not opted out yields `action=retain` without a remote call. `go test ./...` checks both outcomes, repeated evaluation, and envelope errors on rejected requests.
+Service takes `patient_id`, `message_id`, and `kind=appointment_reminder`. Opted-out patient triggers `POST /v1/sms/cancel/{id}` once per message. No opt-out yields `action=retain` without a remote call. `go test ./...` checks both outcomes, repeated evaluation, and envelope errors on rejected requests.
 
-The in-memory opt-out map is scoped to this process. Persist opt-outs and scheduled message IDs in your own patient system before using this workflow across restarts or replicas. Keep clinical details out of message identifiers and HTTP logs.
+Opt-out map is process-scoped. Persist opt-outs and scheduled message IDs in your own patient system before using across restarts or replicas. Keep clinical details out of message identifiers and HTTP logs.
 
 ## Setting up for real use: Appointment SMS Optout Go
 
-That's the minimal version. Before running this for real: The details below apply to Appointment SMS Optout Go.
+That's the minimal version. For real runs, note the details below apply to Appointment SMS Optout Go.
 
 **Account & key**
 
