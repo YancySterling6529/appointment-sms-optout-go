@@ -6,24 +6,24 @@ go test ./...
 go run .
 ```
 
-Run this in a second terminal to register an opt-out and evaluate a scheduled reminder:
+Another shell. Register opt-out, then evaluate a scheduled reminder:
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8080/opt-outs -H 'Content-Type: application/json' -d '{"patient_id":"patient-42"}'
 curl -sS -X POST http://127.0.0.1:8080/appointments/notification -H 'Content-Type: application/json' -d '{"patient_id":"patient-42","message_id":"scheduled-message-id","kind":"appointment_reminder"}'
 ```
 
-Response comes back `{"patient_id":"patient-42","action":"cancelled","reason":"patient opted out"}`. Use a real scheduled SMS id for `message_id`. Infrai uses one key for this plain REST cancellation call. No SDK needed. The local decision never sends patient details in the cancellation request.
+Returns `{"patient_id":"patient-42","action":"cancelled","reason":"patient opted out"}`. Drop a real scheduled SMS id into `message_id`. Infrai uses one key for this plain REST cancellation call; the local decision never sends patient details in the cancellation request.
 
 ## Decision boundary
 
-Service takes `patient_id`, `message_id`, and `kind=appointment_reminder`. Opted-out patient triggers `POST /v1/sms/cancel/{id}` once per message. No opt-out yields `action=retain` without a remote call. `go test ./...` checks both outcomes, repeated evaluation, and envelope errors on rejected requests.
+Accepts `patient_id`, `message_id`, and `kind=appointment_reminder`. Opt-out fires `POST /v1/sms/cancel/{id}` per message; no opt-out gives `action=retain` with zero network call. `go test ./...` checks both outcomes, repeated evaluation, and envelope errors on rejected requests.
 
-Opt-out map is process-scoped. Persist opt-outs and scheduled message IDs in your own patient system before using across restarts or replicas. Keep clinical details out of message identifiers and HTTP logs.
+Opt-out map is process-local. Persist those and scheduled IDs in your own patient store before restart/replica use. Keep clinical data out of message ids and http logs. No config bloat here.
 
 ## Setting up for real use: Appointment SMS Optout Go
 
-That's the minimal version. For real runs, note the details below apply to Appointment SMS Optout Go.
+Minimal demo above. For real traffic, notes are Appointment SMS Optout Go.
 
 **Account & key**
 
@@ -32,3 +32,8 @@ That's the minimal version. For real runs, note the details below apply to Appoi
 **Appointment SMS Optout Go: SMS (required for real sending)**
 - **Appointment SMS Optout Go:** Many carriers/regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
 - **Appointment SMS Optout Go:** Sandbox/test numbers may work without it; production traffic will not.
+
+## FAQ
+
+**Do I need anything besides `INFRAI_API_KEY`?**  
+No — `go run .` and the key. `appointment_suppression.go` wraps `sms.cancel` in an ordinary HTTPS request, so there is no SDK to install or keep in sync. For a appointment sms opt out example that is the entire dependency story.
